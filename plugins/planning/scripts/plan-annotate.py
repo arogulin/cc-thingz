@@ -28,7 +28,8 @@ returns PreToolUse hook JSON response with permissionDecision:
 requirements:
   - agterm, tmux, kitty, or wezterm terminal (agterm tried first, then tmux, kitty, wezterm)
   - $EDITOR set (defaults to vi)
-  - agterm users: needs agtermctl on PATH (bundled with agterm 0.20.0+); no extra config
+  - agterm users: needs agtermctl on PATH (bundled with agterm); no extra config
+    pane-scoped overlays need agterm 0.20.0+
   - kitty users: kitty.conf must have allow_remote_control and listen_on configured:
       allow_remote_control yes
       listen_on unix:/tmp/kitty-$KITTY_PID

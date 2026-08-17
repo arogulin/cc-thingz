@@ -4,6 +4,18 @@ This repo ships independent Claude Code plugins. Version headings use values fro
 
 Entries are sorted by plugin version date, newest first.
 
+## planning v3.8.5 - 2026-08-17
+
+### Bug Fixes
+
+- plan-review and plan-annotate overlays now scope to the agent's own pane in an agterm split, so the sibling pane stays live and usable instead of being covered. `--pane "$AGTERM_PANE"` is passed to `session overlay open` for `left`/`right` and to `session status blocked` for all pane values, including `scratch`, which `overlay open` does not accept. Related to #40, implemented by @vladislav-yevtushenko
+
+## review v2.2.4 - 2026-08-17
+
+### Bug Fixes
+
+- git-review editor overlays now scope to the agent's own pane in an agterm split, matching the plan-review change above. Related to #40, implemented by @vladislav-yevtushenko
+
 ## planning v3.8.4 - 2026-07-12
 
 ### Bug Fixes

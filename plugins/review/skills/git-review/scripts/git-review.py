@@ -23,7 +23,8 @@ requirements:
     - agterm, tmux, kitty, or wezterm terminal (agterm tried first, then tmux, then kitty, then wezterm)
     - $EDITOR set (defaults to vi)
     - git
-    - agterm users: needs agtermctl on PATH (bundled with agterm 0.20.0+); no extra config
+    - agterm users: needs agtermctl on PATH (bundled with agterm); no extra config
+      pane-scoped overlays need agterm 0.20.0+
     - kitty users: kitty.conf must have allow_remote_control and listen_on configured
 """
 
