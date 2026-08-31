@@ -1,12 +1,12 @@
 ---
-description: Create structured implementation plan in docs/plans/
+description: Create structured implementation plan in documentation/plans/
 argument-hint: describe the feature or task to plan
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion, Task, EnterPlanMode, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Implementation Plan Creation
 
-create an implementation plan in `docs/plans/yyyymmdd-<task-name>.md` with interactive context gathering.
+create an implementation plan in `documentation/plans/yyyymmdd-<task-name>.md` with interactive context gathering.
 
 ## custom rules loading
 
@@ -136,7 +136,7 @@ use AskUserQuestion tool to let user select preferred approach before creating t
 
 ## step 2: create plan file
 
-check `docs/plans/` for existing files, then create `docs/plans/yyyymmdd-<task-name>.md` (use current date):
+check `documentation/plans/` for existing files, then create `documentation/plans/yyyymmdd-<task-name>.md` (use current date):
 
 ### plan structure
 
@@ -267,7 +267,7 @@ Example (NOTICE: Files block + tests as separate checklist items):
 ### Task N: [Final] Update documentation
 - [ ] update README.md if needed
 - [ ] update CLAUDE.md if new patterns discovered
-- [ ] move this plan to `docs/plans/completed/`
+- [ ] move this plan to `documentation/plans/completed/`
 
 ## Post-Completion
 *Items requiring manual intervention or external systems - no checkboxes, informational only*
@@ -285,7 +285,7 @@ Example (NOTICE: Files block + tests as separate checklist items):
 
 ## step 3: next steps
 
-after creating the file, tell user: "created plan: `docs/plans/yyyymmdd-<task-name>.md`"
+after creating the file, tell user: "created plan: `documentation/plans/yyyymmdd-<task-name>.md`"
 
 then use AskUserQuestion:
 
@@ -375,8 +375,8 @@ then use AskUserQuestion:
 5. **on completion**:
    - verify all checkboxes marked
    - run final test suite
-   - move plan to `docs/plans/completed/`
-   - create directory if needed: `mkdir -p docs/plans/completed`
+   - move plan to `documentation/plans/completed/`
+   - create directory if needed: `mkdir -p documentation/plans/completed`
 
 6. **partial implementation exception**:
    - if a task provides partial implementation where tests cannot pass until a later task:

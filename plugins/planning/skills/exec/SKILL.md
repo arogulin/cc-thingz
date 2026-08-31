@@ -10,7 +10,7 @@ Execute plan file tasks sequentially, each in an isolated subagent.
 
 ## Arguments
 
-- `$ARGUMENTS` — path to plan file (optional; if omitted, ask user to pick from `plans_dir` userConfig directory, default: `docs/plans/`)
+- `$ARGUMENTS` — path to plan file (optional; if omitted, ask user to pick from `plans_dir` userConfig directory, default: `documentation/plans/`)
 
 ## File Resolution
 
@@ -41,7 +41,7 @@ If the output is non-empty, store it as the resolved custom rules content. When 
 
 ### Step 1. Resolve plan file
 
-If `$ARGUMENTS` contains a file path, use it. Otherwise, list `.md` files in the `plans_dir` userConfig directory (default: `docs/plans/`), excluding `completed/`. If exactly one plan found, use it automatically. If multiple found, ask the user to pick one using AskUserQuestion.
+If `$ARGUMENTS` contains a file path, use it. Otherwise, list `.md` files in the `plans_dir` userConfig directory (default: `documentation/plans/`), excluding `completed/`. If exactly one plan found, use it automatically. If multiple found, ask the user to pick one using AskUserQuestion.
 
 Read the plan file. Count total Task sections (`### Task N:` or `### Iteration N:`) to know the scope.
 

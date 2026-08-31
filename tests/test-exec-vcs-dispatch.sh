@@ -228,7 +228,7 @@ echo ""
 echo "testing VCS dispatch: create-branch.sh"
 echo "======================================"
 
-PLAN_FILE_DATED="docs/plans/20260329-feature-name.md"
+PLAN_FILE_DATED="documentation/plans/20260329-feature-name.md"
 EXPECTED_DERIVED_BRANCH="feature-name"
 
 # test 4: git repo on main with dated plan -> creates and outputs derived branch name
@@ -268,7 +268,7 @@ assert_not_contains "print-name: derived branch was not created" "$branches" "$E
 # test 5c: --print-name strips the date prefix; a non-dated plan returns its stem unchanged
 echo ""
 echo "test 5c: --print-name on a non-dated plan returns the stem"
-output="$(cd "$GIT_PN" && bash "$CREATE_BRANCH" --print-name "docs/plans/no-date-name.md")"
+output="$(cd "$GIT_PN" && bash "$CREATE_BRANCH" --print-name "documentation/plans/no-date-name.md")"
 assert_output "print-name: non-dated plan returns stem" "no-date-name" "$output"
 
 # test 5d: --print-name with no plan path -> non-zero exit
@@ -560,21 +560,21 @@ GIT_SC_GLOB="$(mk_tmp)"
 make_git_repo "$GIT_SC_GLOB" main
 (
     cd "$GIT_SC_GLOB"
-    mkdir -p docs
-    echo "bracket" >'docs/task[1].md'
-    echo "plain" >docs/task1.md
-    git add docs
-    git commit -q -m "seed docs"
-    echo "bracket2" >'docs/task[1].md'
-    echo "plain2" >docs/task1.md
-    git add docs/task1.md
+    mkdir -p documentation
+    echo "bracket" >'documentation/task[1].md'
+    echo "plain" >documentation/task1.md
+    git add documentation
+    git commit -q -m "seed documentation"
+    echo "bracket2" >'documentation/task[1].md'
+    echo "plain2" >documentation/task1.md
+    git add documentation/task1.md
 )
 rc=0
-(cd "$GIT_SC_GLOB" && bash "$STAGE_AND_COMMIT" "update bracket" 'docs/task[1].md' >/dev/null 2>&1) || rc=$?
+(cd "$GIT_SC_GLOB" && bash "$STAGE_AND_COMMIT" "update bracket" 'documentation/task[1].md' >/dev/null 2>&1) || rc=$?
 assert_output "git/glob: exit code 0" "0" "$rc"
 files="$(git -C "$GIT_SC_GLOB" show --name-only --pretty=format: HEAD | sed '/^$/d')"
-assert_output "git/glob: commit contains only the named file" 'docs/task[1].md' "$files"
-assert_output "git/glob: unrelated staged file untouched" "docs/task1.md" "$(git -C "$GIT_SC_GLOB" diff --cached --name-only)"
+assert_output "git/glob: commit contains only the named file" 'documentation/task[1].md' "$files"
+assert_output "git/glob: unrelated staged file untouched" "documentation/task1.md" "$(git -C "$GIT_SC_GLOB" diff --cached --name-only)"
 
 # test 11i: an empty path is a match-all git pathspec, so it has to be rejected before it
 # reaches git or the call silently commits the whole tree instead of failing
@@ -869,7 +869,7 @@ assert_exit_nonzero "detect-branch.sh: empty dir exits non-zero" "$rc"
 echo ""
 echo "test 18: create-branch.sh exits non-zero in empty dir"
 rc=0
-(cd "$EMPTY_DIR" && bash "$CREATE_BRANCH" "docs/plans/20260329-feature-name.md" >/dev/null 2>&1) || rc=$?
+(cd "$EMPTY_DIR" && bash "$CREATE_BRANCH" "documentation/plans/20260329-feature-name.md" >/dev/null 2>&1) || rc=$?
 assert_exit_nonzero "create-branch.sh: empty dir exits non-zero" "$rc"
 
 echo ""
@@ -898,31 +898,31 @@ GIT_MV="$(mk_tmp)"
 make_git_repo "$GIT_MV" main
 (
     cd "$GIT_MV"
-    mkdir -p docs/plans
-    echo "# plan" >"docs/plans/$PLAN_NAME"
-    git add "docs/plans/$PLAN_NAME"
+    mkdir -p documentation/plans
+    echo "# plan" >"documentation/plans/$PLAN_NAME"
+    git add "documentation/plans/$PLAN_NAME"
     git commit -q -m "add plan"
 )
 commits_before="$(git -C "$GIT_MV" rev-list --count HEAD)"
 rc=0
-(cd "$GIT_MV" && bash "$MOVE_PLAN" "docs/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
+(cd "$GIT_MV" && bash "$MOVE_PLAN" "documentation/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
 assert_output "git/move: exit code 0" "0" "$rc"
-[ ! -f "$GIT_MV/docs/plans/$PLAN_NAME" ] && orig="gone" || orig="present"
+[ ! -f "$GIT_MV/documentation/plans/$PLAN_NAME" ] && orig="gone" || orig="present"
 assert_output "git/move: original path removed" "gone" "$orig"
-[ -f "$GIT_MV/docs/plans/completed/$PLAN_NAME" ] && dest="present" || dest="missing"
+[ -f "$GIT_MV/documentation/plans/completed/$PLAN_NAME" ] && dest="present" || dest="missing"
 assert_output "git/move: file now under completed/" "present" "$dest"
 subject="$(git -C "$GIT_MV" log -1 --pretty=%s)"
 assert_output "git/move: commit subject matches" "$EXPECTED_MOVE_SUBJECT" "$subject"
 commits_after="$(git -C "$GIT_MV" rev-list --count HEAD)"
 assert_output "git/move: exactly one new commit" "$((commits_before + 1))" "$commits_after"
 files="$(git -C "$GIT_MV" show --name-status --pretty=format: HEAD | sed '/^$/d')"
-assert_contains "git/move: commit records completed/ path" "$files" "docs/plans/completed/$PLAN_NAME"
+assert_contains "git/move: commit records completed/ path" "$files" "documentation/plans/completed/$PLAN_NAME"
 
 # test 22: git repo, re-run on the now-missing original path -> no-op exit 0, no new commit
 echo ""
 echo "test 22: git repo, re-run on already-moved plan -> no-op"
 rc=0
-out="$(cd "$GIT_MV" && bash "$MOVE_PLAN" "docs/plans/$PLAN_NAME" 2>&1)" || rc=$?
+out="$(cd "$GIT_MV" && bash "$MOVE_PLAN" "documentation/plans/$PLAN_NAME" 2>&1)" || rc=$?
 assert_output "git/move-again: exit code 0 (no-op)" "0" "$rc"
 assert_contains "git/move-again: reports missing file" "$out" "plan file not found"
 commits_after2="$(git -C "$GIT_MV" rev-list --count HEAD)"
@@ -935,17 +935,17 @@ GIT_MV_DONE="$(mk_tmp)"
 make_git_repo "$GIT_MV_DONE" main
 (
     cd "$GIT_MV_DONE"
-    mkdir -p docs/plans/completed
-    echo "# plan" >"docs/plans/completed/$PLAN_NAME"
-    git add "docs/plans/completed/$PLAN_NAME"
+    mkdir -p documentation/plans/completed
+    echo "# plan" >"documentation/plans/completed/$PLAN_NAME"
+    git add "documentation/plans/completed/$PLAN_NAME"
     git commit -q -m "add completed plan"
 )
 commits_before="$(git -C "$GIT_MV_DONE" rev-list --count HEAD)"
 rc=0
-out="$(cd "$GIT_MV_DONE" && bash "$MOVE_PLAN" "docs/plans/completed/$PLAN_NAME" 2>&1)" || rc=$?
+out="$(cd "$GIT_MV_DONE" && bash "$MOVE_PLAN" "documentation/plans/completed/$PLAN_NAME" 2>&1)" || rc=$?
 assert_output "git/already-completed: exit code 0" "0" "$rc"
 assert_contains "git/already-completed: reports already under completed/" "$out" "already under completed/"
-[ -f "$GIT_MV_DONE/docs/plans/completed/$PLAN_NAME" ] && still="present" || still="missing"
+[ -f "$GIT_MV_DONE/documentation/plans/completed/$PLAN_NAME" ] && still="present" || still="missing"
 assert_output "git/already-completed: file untouched" "present" "$still"
 commits_after="$(git -C "$GIT_MV_DONE" rev-list --count HEAD)"
 assert_output "git/already-completed: no new commit" "$commits_before" "$commits_after"
@@ -958,22 +958,22 @@ if [ "$HG_AVAILABLE" -eq 1 ]; then
     make_hg_repo "$HG_MV"
     (
         cd "$HG_MV"
-        mkdir -p docs/plans
-        echo "# plan" >"docs/plans/$PLAN_NAME"
-        hg add "docs/plans/$PLAN_NAME" >/dev/null
+        mkdir -p documentation/plans
+        echo "# plan" >"documentation/plans/$PLAN_NAME"
+        hg add "documentation/plans/$PLAN_NAME" >/dev/null
         hg commit -m "add plan" >/dev/null
     )
     rc=0
-    (cd "$HG_MV" && bash "$MOVE_PLAN" "docs/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
+    (cd "$HG_MV" && bash "$MOVE_PLAN" "documentation/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
     assert_output "hg/move: exit code 0" "0" "$rc"
-    [ ! -f "$HG_MV/docs/plans/$PLAN_NAME" ] && orig="gone" || orig="present"
+    [ ! -f "$HG_MV/documentation/plans/$PLAN_NAME" ] && orig="gone" || orig="present"
     assert_output "hg/move: original path removed" "gone" "$orig"
-    [ -f "$HG_MV/docs/plans/completed/$PLAN_NAME" ] && dest="present" || dest="missing"
+    [ -f "$HG_MV/documentation/plans/completed/$PLAN_NAME" ] && dest="present" || dest="missing"
     assert_output "hg/move: file now under completed/" "present" "$dest"
     subject="$(cd "$HG_MV" && hg log -l 1 -T '{desc}')"
     assert_output "hg/move: commit subject matches" "$EXPECTED_MOVE_SUBJECT" "$subject"
     files="$(cd "$HG_MV" && hg log -l 1 -T '{files}')"
-    assert_contains "hg/move: commit records completed/ path" "$files" "docs/plans/completed/$PLAN_NAME"
+    assert_contains "hg/move: commit records completed/ path" "$files" "documentation/plans/completed/$PLAN_NAME"
 fi
 
 # test 25: destination already exists -> refuse to overwrite, exit non-zero, no commit
@@ -983,19 +983,19 @@ GIT_MV_CLOBBER="$(mk_tmp)"
 make_git_repo "$GIT_MV_CLOBBER" main
 (
     cd "$GIT_MV_CLOBBER"
-    mkdir -p docs/plans/completed
-    echo "# new plan" >"docs/plans/$PLAN_NAME"
-    echo "# OLD COMPLETED" >"docs/plans/completed/$PLAN_NAME"
-    git add docs/plans
+    mkdir -p documentation/plans/completed
+    echo "# new plan" >"documentation/plans/$PLAN_NAME"
+    echo "# OLD COMPLETED" >"documentation/plans/completed/$PLAN_NAME"
+    git add documentation/plans
     git commit -q -m "plan plus pre-existing completed"
 )
 commits_before="$(git -C "$GIT_MV_CLOBBER" rev-list --count HEAD)"
 rc=0
-(cd "$GIT_MV_CLOBBER" && bash "$MOVE_PLAN" "docs/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
+(cd "$GIT_MV_CLOBBER" && bash "$MOVE_PLAN" "documentation/plans/$PLAN_NAME" >/dev/null 2>&1) || rc=$?
 assert_exit_nonzero "git/clobber: refuses with non-zero exit" "$rc"
-[ -f "$GIT_MV_CLOBBER/docs/plans/$PLAN_NAME" ] && src="present" || src="gone"
+[ -f "$GIT_MV_CLOBBER/documentation/plans/$PLAN_NAME" ] && src="present" || src="gone"
 assert_output "git/clobber: source plan left in place" "present" "$src"
-dest_content="$(cat "$GIT_MV_CLOBBER/docs/plans/completed/$PLAN_NAME")"
+dest_content="$(cat "$GIT_MV_CLOBBER/documentation/plans/completed/$PLAN_NAME")"
 assert_output "git/clobber: existing destination not overwritten" "# OLD COMPLETED" "$dest_content"
 commits_after="$(git -C "$GIT_MV_CLOBBER" rev-list --count HEAD)"
 assert_output "git/clobber: no new commit" "$commits_before" "$commits_after"

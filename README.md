@@ -201,7 +201,7 @@ Structured implementation planning with interactive annotation review and autono
 | hook | `PreToolUse` / CLI | Plan annotation in `$EDITOR` with diff-based feedback loop |
 | agent | `plan-review` | Automated plan quality review — completeness, over-engineering, testing |
 
-**plan command** — creates a plan file in `docs/plans/yyyymmdd-<task-name>.md` through interactive context gathering:
+**plan command** — creates a plan file in `documentation/plans/yyyymmdd-<task-name>.md` through interactive context gathering:
 - **Step 0** — parses intent and explores codebase for relevant context
 - **Step 1** — asks focused questions one at a time (goal, scope, constraints, testing approach, title)
 - **Step 1.5** — proposes 2-3 implementation approaches with trade-offs (skipped if obvious)
@@ -303,7 +303,7 @@ Configuration via `userConfig` (prompted at plugin install):
 | `review_iterations` | `5` | Max fix-and-recheck cycles during internal review |
 | `external_review_iterations` | `10` | Max iterations for external review adversarial loop |
 | `finalize_enabled` | `true` | Whether to run the finalize phase (rebase + squash) |
-| `plans_dir` | `docs/plans` | Directory where plan files are located |
+| `plans_dir` | `documentation/plans` | Directory where plan files are located |
 
 **External review contract** — review phase 3 always runs through `run-external-review.sh`, which receives the `external_review_cmd` value and the resolved prompt. When the setting is empty it falls back to codex via `run-codex.sh`. A custom command must:
 
@@ -381,7 +381,7 @@ Session workflow helpers for knowledge capture, confusion handling, course corre
 | skill | `/workflow:wrong` | Reset and re-evaluate when current approach isn't working |
 | skill | `/workflow:md-copy` | Format final answer as markdown and copy to clipboard |
 | skill | `/workflow:txt-copy` | Copy generated text content to clipboard |
-| skill | `/workflow:backlog` | Read, work, and maintain deferred-work items in `docs/backlog/` |
+| skill | `/workflow:backlog` | Read, work, and maintain deferred-work items in `documentation/backlog/` |
 
 **learn** — reviews conversation history, extracts strategic project knowledge (architecture patterns, conventions, operational insights), and saves selected items to the project CLAUDE.md. When `CLAUDE.local.md` is present, per-developer / per-checkout discoveries (machine-specific tooling, environment quirks) are routed there instead. Defers to any project-defined memory-placement guidance documented in `CLAUDE.md` or `.claude/rules/`. Uses granular selection via AskUserQuestion so the user picks exactly what to keep.
 
@@ -393,7 +393,7 @@ Session workflow helpers for knowledge capture, confusion handling, course corre
 
 **txt-copy** — copies generated text (emails, messages, letters) to clipboard via a timestamped temp file. Cross-platform clipboard detection (macOS pbcopy, Linux xclip/xsel).
 
-**backlog** — maintains `docs/backlog/`, one markdown file per deferred item, for work that is real but not being done now. Each item carries `worth` (yes/later/no) and `added` (ISO date) in frontmatter, plus `where` (path:line) when the item is anchored to one place, with a free body. Lists the backlog with each present `where` verified against the current tree so stale anchors are reported as stale rather than as work, takes a slug argument to jump straight to one item, and `--all` to walk every item to a disposition one at a time. Either form briefs the item first — summary, effort, blast radius, materiality — so the call is made against facts rather than the item's own account. Before appending it finds candidates by the `where` path and slug, settling it on the defect each one claims rather than on a shared path. No checkbox and no in-progress marker: the item is deleted in the commit that lands its fix. Refuses to write into a branch other than the repository default without asking first. Git only — the lifecycle is expressed in `git rm`, branch detection, and staging.
+**backlog** — maintains `documentation/backlog/`, one markdown file per deferred item, for work that is real but not being done now. Each item carries `worth` (yes/later/no) and `added` (ISO date) in frontmatter, plus `where` (path:line) when the item is anchored to one place, with a free body. Lists the backlog with each present `where` verified against the current tree so stale anchors are reported as stale rather than as work, takes a slug argument to jump straight to one item, and `--all` to walk every item to a disposition one at a time. Either form briefs the item first — summary, effort, blast radius, materiality — so the call is made against facts rather than the item's own account. Before appending it finds candidates by the `where` path and slug, settling it on the defect each one claims rather than on a shared path. No checkbox and no in-progress marker: the item is deleted in the commit that lands its fix. Refuses to write into a branch other than the repository default without asking first. Git only — the lifecycle is expressed in `git rm`, branch detection, and staging.
 
 ## Custom Rules
 

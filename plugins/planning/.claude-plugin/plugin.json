@@ -43,7 +43,7 @@
       "title": "Plans directory",
       "type": "string",
       "description": "Directory where plan files are located, relative to project root.",
-      "default": "docs/plans"
+      "default": "documentation/plans"
     }
   }
 }

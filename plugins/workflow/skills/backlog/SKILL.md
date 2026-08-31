@@ -1,12 +1,12 @@
 ---
 name: backlog
-description: Read, work, and maintain a Git repo's deferred-work items in docs/backlog/, one file per item. Use when the user says "backlog", "check backlog", "what's on my backlog", "work the backlog", "address the backlog", "add to backlog", "clean up backlog", or when a review or task produced items that are real but not being fixed now. Owns the item format and the create-then-delete lifecycle.
+description: Read, work, and maintain a Git repo's deferred-work items in documentation/backlog/, one file per item. Use when the user says "backlog", "check backlog", "what's on my backlog", "work the backlog", "address the backlog", "add to backlog", "clean up backlog", or when a review or task produced items that are real but not being fixed now. Owns the item format and the create-then-delete lifecycle.
 allowed-tools: Read, Edit, Write, Bash, Grep, Glob, AskUserQuestion
 ---
 
 # Backlog
 
-`docs/backlog/` at a repo root holds work that is real but not being done now: a defect a change did not
+`documentation/backlog/` at a repo root holds work that is real but not being done now: a defect a change did not
 introduce, drift with no user-visible symptom, a fix whose blast radius exceeded its value, an idea worth
 keeping. One file per item. It is the maintainer's own list — it never gates anything and never reaches a
 contributor.
@@ -19,7 +19,7 @@ improvise an equivalent in another VCS.
 
 ## Item format
 
-`docs/backlog/<slug>.md`. The slug names the defect, not the file it lives in
+`documentation/backlog/<slug>.md`. The slug names the defect, not the file it lives in
 (`reopen-fallback-ignores-frontmost.md`), so it can be cited from a commit and dedupe is a filename check.
 
 ```markdown
@@ -90,7 +90,7 @@ the item's own account: the reasoning in a file goes stale the same way its `whe
 An argument that starts with `-` is option syntax, so a file whose name begins with `-` cannot be reached
 as a slug; `all.md` is still an ordinary slug and unaffected.
 
-1. Glob `docs/backlog/*.md` from the repo root and read every file in full. Keep `worth: no` items in the
+1. Glob `documentation/backlog/*.md` from the repo root and read every file in full. Keep `worth: no` items in the
    walk: worth informs the recommendation, it does not filter the list.
 2. Before asking anything, verify every `where` and analyze each item's value, complexity, and blockers.
    Identify explicit blockers and relationships between items, ask about real prerequisites before their
@@ -117,7 +117,7 @@ as a slug; `all.md` is still an ordinary slug and unaffected.
 
 ## A slug as the argument
 
-`/workflow:backlog <slug>` names one item: `docs/backlog/<slug>.md`, the file name without its extension. Read
+`/workflow:backlog <slug>` names one item: `documentation/backlog/<slug>.md`, the file name without its extension. Read
 that file alone, verify its `where` the same way step 2 below does when it has one, print the briefing
 above for it, and go straight to the fix-or-drop question — skip the listing, which is not what was
 asked for. A slug matching no file is a mistake worth saying plainly: report it and list what is there
@@ -125,7 +125,7 @@ instead of guessing at the nearest name.
 
 ## Reading and working the list
 
-1. Glob `docs/backlog/*.md` from the repo root and read each file's frontmatter and H1. If the directory
+1. Glob `documentation/backlog/*.md` from the repo root and read each file's frontmatter and H1. If the directory
    does not exist, say so plainly and offer to start one — do not create it empty.
 2. **Verify before reporting.** `where` goes stale when a file is renamed or a line moves. For each item
    that has one, check the location still exists and still says what the item claims; report a stale item
@@ -175,7 +175,7 @@ review that touches its file, so the same item arrives repeatedly. If it is alre
 it alone. If the new sighting sharpens the description or changes the `worth` call, edit that file in place
 rather than adding a second one.
 
-Create `docs/backlog/` if it does not exist — after the branch check above, never before it.
+Create `documentation/backlog/` if it does not exist — after the branch check above, never before it.
 
 When the files are written, read `git diff --cached --name-only` before offering anything. Nothing has
 been staged yet at that point, so anything it lists is pre-existing — including another backlog file from

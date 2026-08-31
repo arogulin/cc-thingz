@@ -47,7 +47,7 @@ limitations:
 
 file mode (for /planning:make integration):
 
-    plan-annotate.py docs/plans/foo.md
+    plan-annotate.py documentation/plans/foo.md
 
 opens a copy of the plan file in $EDITOR. if user makes changes, outputs
 the unified diff to stdout (no JSON wrapping). Claude reads the diff,

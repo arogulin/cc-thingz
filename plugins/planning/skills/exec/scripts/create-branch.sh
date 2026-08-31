@@ -13,7 +13,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # derive branch name from plan file path (shared by git and hg paths)
-# e.g., docs/plans/20260329-feature-name.md -> feature-name
+# e.g., documentation/plans/20260329-feature-name.md -> feature-name
 derive_branch_name() {
     local name
     name=$(basename "$1" .md)
