@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Grep, Glob
 
 # Ask Codex
 
-Consult OpenAI Codex (GPT-5.5) as a second opinion for investigation, debugging, or review tasks.
+Consult OpenAI Codex (GPT-5.6) as a second opinion for investigation, debugging, or review tasks.
 
 ## Activation Triggers
 
