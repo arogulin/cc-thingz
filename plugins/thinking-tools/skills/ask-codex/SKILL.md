@@ -1,6 +1,6 @@
 ---
 name: ask-codex
-description: Consult OpenAI Codex for investigation, debugging, or code review. Inside agterm it runs as a persistent session in the split pane, so it keeps context across many review rounds. Use when user explicitly asks to "ask codex", "check with codex", "codex review", or as a last resort when stuck after 4+ failed attempts at debugging, investigation, or bug fix and completely out of ideas. Codex is slow (2-5 min), so only escalate when truly stuck. Codex runs in read-only mode with full project access — it analyzes, we implement.
+description: Consult OpenAI Codex for investigation, debugging, or code review. Inside agterm it runs as a persistent session in the split pane, so it keeps context across many review rounds. Use when user explicitly asks to "ask codex", "check with codex", "codex review", or as a last resort when stuck after 4+ failed attempts at debugging, investigation, or bug fix and completely out of ideas. Codex is slow (2-5 min), so only escalate when truly stuck. Codex gets full repo access and network so it can use every tool a good review needs — it reports and proposes, we implement.
 allowed-tools: Bash, Read, Grep, Glob
 ---
 
@@ -13,7 +13,8 @@ Two transports, same prompting discipline:
 - **Pane mode (preferred, requires agterm)** — codex runs as a live TUI in the split pane of the current
   session and stays there between rounds. Review cycles are routinely 7-9 rounds; a fresh process per
   round throws away everything codex already learned about the change and re-pays the reading cost each
-  time. The user can also read, scroll, or take the conversation over by hand.
+  time. The user can also read, scroll, or take the conversation over by hand. The answer comes back
+  from codex's own rollout journal, so nothing is scraped and nothing is truncated.
 - **Exec mode (fallback)** — one `codex exec` per question, for when there is no agterm session.
 
 ## Activation Triggers
@@ -37,6 +38,19 @@ Run `which codex` to verify the CLI is installed. If not found, inform the user 
 Then pick the transport: `echo $AGTERM_ENABLED` — `1` means pane mode, empty means exec mode.
 
 ### Step 2: Build Context
+
+**Reviewing a PR.** In pane mode codex has network, so tell it the PR number and repo and let it run
+`gh pr view` / `gh pr diff` itself — the PR body, the CI rollup, and existing comments are all part of
+the review and it should read them. In exec mode the sandbox has no shell network, so fetch them
+yourself and put the paths in the prompt:
+
+```bash
+gh pr view <N> --repo <slug> --json number,title,body,reviewDecision,statusCheckRollup,comments,files > $S/pr-<N>.json
+gh pr diff <N> --repo <slug> > $S/pr-<N>.diff
+```
+
+Codex's built-in web search works in both modes regardless of sandbox — only shell network is gated.
+
 
 Gather context from the current conversation:
 
@@ -112,6 +126,20 @@ this change should not ship yet.
 Scope: [files and changes to review — paths, branch diff, or description]
 Focus: [specific area if user specified one, otherwise "general"]
 </task>
+
+<working_rules>
+Do this analysis yourself in this turn. Do not spawn subagents, do not invoke other skills or
+slash commands, and do not wait on background agents. A pass you delegate and never receive is
+worse than no pass, because the verdict looks reviewed when it is not.
+
+You have full access to the repository and to the network. Use whatever you need: run the tests,
+run the linters, check out refs, query the API. Creating scratch files and deleting them again is
+fine.
+
+Do NOT fix anything. Report each issue and propose the change you would make; leave the code as
+you found it. Applying fixes is the caller's job, and a review that edits what it reviews cannot
+be checked.
+</working_rules>
 
 <operating_stance>
 Default to skepticism.
@@ -212,12 +240,12 @@ the earlier rounds. Ask the follow-up directly.
 
 The script:
 - opens a vertical split on `$AGTERM_SESSION_ID` if there is none (never on `active` — that is the
-  session the user has selected, not yours);
-- launches `codex --no-alt-screen -m gpt-5.6-sol -s read-only -a never -c model_reasoning_effort="high" -C <repo>`
+  session the user has selected, not yours), and leaves the divider where the user has it;
+- launches `codex --no-alt-screen -m gpt-5.6-sol -c model_reasoning_effort="medium" --approve-for-me -c sandbox_workspace_write.network_access=true -C <repo>`
   by typing it at the split pane's shell prompt;
 - answers codex's "Do you trust the contents of this directory?" prompt with `1` when it appears
   (unanswered, it swallows the next round's prompt and quits);
-- blocks until the status line reads `· Ready ·`, so no round is typed into a TUI that is not listening.
+- waits for an idle composer before typing, and records the rollout journal codex is writing.
 
 Codex is a child of that pane's shell, so `/quit` drops the user back at a prompt in the right directory
 and the pane survives — they can restart codex there by hand.
@@ -229,13 +257,26 @@ Write the round's prompt to a file and send it:
 ```
 
 Never type a multi-line prompt into the pane yourself: every newline submits, so a 30-line brief becomes
-30 premature Enters. The script types one line (`Read the file <path> and do exactly what it says. End
-your reply with the line CODEX-DONE-<stamp>`), sends Enter separately, then polls every 10s until both
-the sentinel is on screen and the status line is back to `Ready`, and prints the round's output.
+30 premature Enters. The script types one line pointing codex at the file.
 
-Run it with `run_in_background: true` and check with BashOutput — a round takes 2-5 minutes and long
-silences during reasoning are normal. Default timeout is 900s; raise with `CODEX_PANE_TIMEOUT=1800`. On
-timeout the script dumps the last 80 pane lines to stderr.
+**Run `ask` once with `run_in_background: true` and do nothing until it wakes you.** It blocks until the
+turn actually ends and then exits, which is your signal. Do NOT poll it with BashOutput on a timer, and
+do not "check on" the pane while it runs — every check is a model call, and a 20-minute review checked
+every 30 seconds costs 40 of them for no information. The script's own wait loop costs nothing.
+
+Exit codes: `0` answer on stdout, `2` timeout (default 1800s, raise with `CODEX_PANE_TIMEOUT`), `3` codex
+aborted the turn, `4` codex is stuck on a human approval prompt that nothing here can answer.
+
+**How completion is detected.** Codex appends a `task_complete` event to its rollout journal at
+`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, and that event's `last_agent_message` holds the complete
+reply. The script watches for it and prints it verbatim. This is why there is no sentinel and no pane
+scraping for the answer: the pane collapses long tool transcripts to `… +N lines (ctrl + t to view
+transcript)` and that loss is unrecoverable, while the journal keeps the full text.
+
+Do not key anything on the status line. `[tui] status_line` is user-configurable, and its `run-state`
+component — the one that printed `Ready` / `Working` — is often switched off to keep the line short. The
+script's idle check uses the transcript area (`esc to interrupt` present or absent, plus the composer
+row), which no config setting removes.
 
 ### Step 4b: Execute — exec mode (no agterm)
 
@@ -266,8 +307,13 @@ codex exec -m gpt-5.6-sol \
 
 ### Step 5: Present Results
 
-1. **Extract codex's analysis** — skip session info, token counts, prompt echo, and in pane mode the TUI
-   chrome (spinner rows, status line, the sentinel)
+0. **Check stderr first.** If the round printed `WARNING: codex delegated part of this round to
+   subagents that never completed`, do not report the verdict as a review result — say the independent
+   pass never landed and re-run with the working_rules block. If it printed a network-failure warning,
+   say which state codex could not fetch. If the script exited `3` or `4`, report that instead of an
+   answer: `4` means codex is sitting on an approval prompt in the pane and needs a human.
+1. **Extract codex's analysis** — the pane-mode answer arrives verbatim from the rollout journal, so no
+   chrome-stripping is needed; in exec mode skip session info, token counts, and the prompt echo
 2. **Parse structured output** — markdown findings in pane mode, JSON in exec mode
 3. **Add your assessment** — agree, disagree, or note caveats
 4. **STOP and ask** — do NOT apply any fixes or changes without explicit user approval
@@ -319,10 +365,14 @@ Present findings sorted by severity, filtered by confidence:
 
 ## Important Rules
 
-- **Read-only always** — codex analyzes, we implement. Never let codex edit files.
+- **Codex reports, it does not fix** — it has full repo access and may create and delete scratch
+  files, run tests, and use the network. It must not apply fixes to the code under review. Say so in
+  every prompt; the working_rules block in the review template already does.
 - **Don't duplicate files** — codex has full project access. Provide paths, not content.
 - **Focused prompts** — specific questions get better answers than broad "review everything".
-- **Background execution** — always run in background to avoid timeout issues.
+- **Background execution, then wait** — one `run_in_background` call per round, and no polling while
+  it runs. The script blocks until the turn ends; checking on it costs a model call each time and
+  tells you nothing the exit does not.
 - **One question at a time** — if multiple concerns, run separate rounds. In pane mode this costs
   nothing, since the session keeps the context.
 - **Reuse beats restart** — a `reused` pane already knows the change. Re-briefing wastes the point.
@@ -340,7 +390,8 @@ Present findings sorted by severity, filtered by confidence:
 
 - **Codex not found**: `which codex` — install via `npm install -g @openai/codex`
 - **Authentication**: `codex login` if getting auth errors
-- **Timeout (exec mode)**: increase `stream_idle_timeout_ms` for complex analyses
+- **Timeout (exec mode)**: increase `stream_idle_timeout_ms` for complex analyses; in pane mode raise
+  `CODEX_PANE_TIMEOUT` instead
 - **Off-target response**: refine prompt with more specific file:line references
 - **Hangs on "Reading additional input from stdin…"**: the exec invocation is missing the `< /dev/null`
   stdin redirect — add it (see Step 4b).

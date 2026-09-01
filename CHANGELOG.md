@@ -4,6 +4,26 @@ This repo ships independent Claude Code plugins. Version headings use values fro
 
 Entries are sorted by plugin version date, newest first.
 
+## thinking-tools v1.4.0 - 2026-09-01
+
+### New Features
+
+- `ask-codex` reads a pane round's answer from codex's own rollout journal (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) instead of scraping the terminal. A finished turn appends a `task_complete` event whose `last_agent_message` holds the complete reply, so the sentinel is gone and so is the truncation: the pane collapses long tool transcripts to `… +N lines (ctrl + t to view transcript)` and that loss was unrecoverable
+- `ask` blocks until the turn ends and then exits, which is the caller's signal. The wait costs no model calls — the previous instruction to poll with BashOutput every 15-20 seconds spent one model call per check for the length of a review, and is now an explicit prohibition
+- Codex runs with full repo access and network (`--approve-for-me` plus `sandbox_workspace_write.network_access=true`), so a review can run the tests, fetch PR state with `gh`, and write scratch files. The review prompt tells it to report and propose rather than fix, since a review that edits what it reviews cannot be checked
+- Rounds fail loudly instead of silently degrading: a round where codex delegated to subagents that never completed is flagged as an unverified verdict, a failed network call is flagged, and distinct exit codes separate timeout (2), an aborted turn (3), and codex sitting on a human approval prompt (4)
+
+### Bug Fixes
+
+- The idle gate no longer keys on `· Ready ·` in the status line. `[tui] status_line` is user-configurable and its `run-state` component is commonly switched off to keep the line short, which made `ensure` fail its full 120s wait against a codex that was up and listening. Busy/idle now comes from the transcript area, which no config setting removes
+- The rollout journal is matched on `originator == "codex-tui"` as well as cwd, so a concurrent `codex exec` run or auto-review's own reviewer thread cannot be mistaken for the pane's session — the wrong journal never logs the turn being waited on
+- The approval-prompt detector matches only the last rows of the screen and requires a live numbered selector. Matching the phrases anywhere on screen made codex trip it by quoting them in an answer
+- Reasoning effort is pinned to `medium` in the skill rather than inherited from the user's global codex config
+
+### Other
+
+- The pane's split ratio is left alone; `ensure` no longer resizes it
+
 ## thinking-tools v1.3.0 - 2026-08-31
 
 ### New Features
