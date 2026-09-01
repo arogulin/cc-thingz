@@ -68,20 +68,18 @@ Build a focused prompt. Do NOT dump entire files — codex has full project acce
 itself. Provide file paths and line references so codex knows where to look.
 
 **Prepend a memory-load preamble** (first round only). Codex auto-loads only `AGENTS.md`; it does NOT
-read Claude Code's memory files (`CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`, `~/.claude/CLAUDE.md`),
-so the project conventions Claude follows are invisible to Codex unless you tell it to read them.
-Prepend this line to the prompt:
+read Claude Code's project memory files (`CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`), so the
+project conventions Claude follows are invisible to Codex unless you tell it to read them. Prepend this
+line to the prompt:
 
 ```
-First read these project guidance files if present: <ABS_HOME>/.claude/CLAUDE.md, CLAUDE.md, CLAUDE.local.md, .claude/rules/
+First read these project guidance files if present: CLAUDE.md, CLAUDE.local.md, .claude/rules/
 ```
 
-- Resolve `<ABS_HOME>` to the **absolute** home path (run `echo $HOME`, e.g. `/home/<user>`) and write the
-  literal path — do NOT leave the string `$HOME` in the prompt. Whether `$HOME` expands depends on how the
-  prompt is passed to Codex, and Codex may open the file with a non-shell tool that never expands it, so
-  only a literal absolute path is reliable.
+- Project-level files only. Never point Codex at the user-level `~/.claude/CLAUDE.md` — that file is
+  Claude's own operating instructions, and Codex has `AGENTS.md` for its user-facing conventions.
 - No `@` prefix — `@file` is inert in `codex exec` (literal text, not an import).
-- The project-relative paths resolve against Codex's working directory; Codex skips any that don't exist.
+- The paths resolve against Codex's working directory; Codex skips any that don't exist.
 
 **Template for investigation/debug:**
 
@@ -259,13 +257,28 @@ Write the round's prompt to a file and send it:
 Never type a multi-line prompt into the pane yourself: every newline submits, so a 30-line brief becomes
 30 premature Enters. The script types one line pointing codex at the file.
 
+**`ask` is the only supported way to send a round — including after `ensure` has failed.** A failed
+`ensure` means the pane is not in a state the script recognises; fix that (read the pane, clear the
+blocker, quit codex and re-run `ensure`) rather than driving the pane with your own `agtermctl session
+type` calls. Two things go wrong every time someone hand-rolls it:
+
+- `agtermctl session type` returns `ok` once the keystrokes are injected, which is not evidence codex
+  accepted them. The Enter can land before the typed line reaches the composer, leaving the prompt
+  unsubmitted while you wait on a pane where nothing is running. `ask` verifies the turn actually
+  started (`esc to interrupt` present) and re-sends Enter once before giving up with exit 5.
+- Sentinel counting is not how completion is detected here, and a hand-rolled `grep -c SENTINEL >= 2`
+  silently depends on the sentinel instruction being in the *typed line* rather than the brief file.
+  Put the instruction in the file and the count never reaches 2, so the loop spins forever after codex
+  has finished. `ask` reads the rollout journal instead and needs no sentinel at all.
+
 **Run `ask` once with `run_in_background: true` and do nothing until it wakes you.** It blocks until the
 turn actually ends and then exits, which is your signal. Do NOT poll it with BashOutput on a timer, and
 do not "check on" the pane while it runs — every check is a model call, and a 20-minute review checked
 every 30 seconds costs 40 of them for no information. The script's own wait loop costs nothing.
 
 Exit codes: `0` answer on stdout, `2` timeout (default 1800s, raise with `CODEX_PANE_TIMEOUT`), `3` codex
-aborted the turn, `4` codex is stuck on a human approval prompt that nothing here can answer.
+aborted the turn, `4` codex is stuck on a human approval prompt that nothing here can answer, `5` the
+prompt was typed but codex never started the turn.
 
 **How completion is detected.** Codex appends a `task_complete` event to its rollout journal at
 `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, and that event's `last_agent_message` holds the complete
@@ -377,7 +390,11 @@ Present findings sorted by severity, filtered by confidence:
   nothing, since the session keeps the context.
 - **Reuse beats restart** — a `reused` pane already knows the change. Re-briefing wastes the point.
 - **Always `--target "$AGTERM_SESSION_ID"`** for any manual agtermctl call — `active` is whatever
-  session the user has selected.
+  session the user has selected. `session text` takes `--all` or `--lines N`, never both; combining
+  them is rejected.
+- **A wait loop needs a positive liveness check.** A predicate that is empty both when the work is
+  unfinished and when the question was wrong will report success. Assert the thing is still running
+  alongside the done-condition.
 - **Critical thinking** — codex can be wrong. Evaluate its suggestions before implementing.
 
 ## When NOT to Use
@@ -398,9 +415,11 @@ Present findings sorted by severity, filtered by confidence:
 - **Script says the split never came up**: check `agtermctl tree --json`; if the split pane exists but
   sits at a shell prompt, codex failed to start. Read it with
   `agtermctl session text --pane right --target "$AGTERM_SESSION_ID" --all | tail -40`.
-- **Sentinel never appears**: codex may be waiting on a prompt. `ensure` clears the directory-trust
-  prompt and `-a never` suppresses approvals, so this should be rare; if it happens, look at the pane
-  and clear it by hand.
+- **`ask` exits 5 ("never started the turn")**: the line was typed but codex did not accept it, so the
+  prompt is sitting unsubmitted in the composer. Look at the pane, clear whatever is in the way (a
+  leftover approval selector, a modal), and re-run `ask`.
+- **`ask` exits 4**: codex is waiting on a human approval prompt. `ensure` clears the directory-trust
+  prompt and `--approve-for-me` suppresses the rest, so this is rare; clear it in the pane by hand.
 - **`ask` fails with "no codex in the split pane"**: the user quit codex. That is supported — the pane
   drops to a shell. Run `ensure` again; it starts a fresh session, so context from earlier rounds is
   gone. Say so before re-briefing.

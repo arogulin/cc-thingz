@@ -4,6 +4,20 @@ This repo ships independent Claude Code plugins. Version headings use values fro
 
 Entries are sorted by plugin version date, newest first.
 
+## thinking-tools v1.4.1 - 2026-09-01
+
+### Bug Fixes
+
+- `ask` verifies that codex actually started the turn instead of trusting `agtermctl session type`'s `ok`. The Enter can land before the typed line reaches the composer, leaving the prompt sitting unsubmitted while the script waits on a pane where nothing is running — previously that burned the full 1800s timeout. It now waits for `esc to interrupt`, re-sends Enter once, and fails fast with a new exit code 5 and the last lines of the pane
+- The gap between the typed line and its Enter is 2s rather than 1s, which is what made the race rare enough to miss
+
+### Improvements
+
+- The memory-load preamble names project-level guidance only (`CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`). It no longer points codex at the user-level `~/.claude/CLAUDE.md`, which holds Claude's own operating instructions; codex has `AGENTS.md` for its user-facing conventions. Drops the `<ABS_HOME>` resolution step the absolute path required
+- SKILL.md states that `codex-pane.sh ask` is the only supported way to send a round, including after `ensure` has failed, and documents the two failures that hand-rolled `agtermctl` driving reproduces: an unverified submission, and a `grep -c SENTINEL >= 2` completion check that never satisfies when the sentinel instruction lives in the brief file rather than the typed line
+- Replaced the stale "Sentinel never appears" troubleshooting entry — there has been no sentinel since v1.4.0 — with entries for exit 4 and exit 5
+- Notes that `agtermctl session text` takes `--all` or `--lines N` but not both, and that a wait loop whose predicate can be empty for a benign reason needs a positive liveness assertion beside it
+
 ## thinking-tools v1.4.0 - 2026-09-01
 
 ### New Features

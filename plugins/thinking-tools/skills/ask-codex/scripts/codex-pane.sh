@@ -16,6 +16,7 @@
 # seconds, while this loop costs nothing at all.
 #
 # Exit codes: 0 answer printed | 2 timeout | 3 turn aborted | 4 codex is blocked on a human
+#             5 the prompt was typed but codex never started the turn
 #
 # Environment:
 #   CODEX_PANE_MODEL    model passed to codex (default gpt-5.6-sol)
@@ -72,8 +73,27 @@ is_blocked() {
 
 submit() {  # type one line, then Enter as a separate injection
   agtermctl session type --pane "$PANE" --target "$TARGET" "$1" >/dev/null
-  sleep 1
+  sleep 2
   printf '\n' | agtermctl session type --pane "$PANE" --target "$TARGET" --stdin >/dev/null
+}
+
+# `agtermctl session type` returns ok once the keystrokes are injected, which says nothing about
+# whether codex accepted them: the Enter can land before the typed line is in the composer, leaving
+# the prompt sitting there unsubmitted. Waiting on a pane where nothing is running then burns the
+# whole timeout. Confirm the turn actually started, and re-send Enter once if it did not.
+submit_verified() {
+  local roll="$2" base="$3" n
+  submit "$1"
+  for n in 1 2 3 4 5; do
+    is_busy && return 0
+    [ -f "$roll" ] && [ "$(count_event "$roll" task_complete)" -gt "$base" ] && return 0
+    [ "$n" = 3 ] && printf '\n' | agtermctl session type --pane "$PANE" --target "$TARGET" --stdin >/dev/null
+    sleep 2
+  done
+  is_busy && return 0
+  echo "codex never started the turn - the prompt was typed but not submitted. Last 10 lines:" >&2
+  screen | tail -10 >&2
+  return 5
 }
 
 state_file() { echo "$STATE_DIR/${TARGET}.$1"; }
@@ -186,7 +206,7 @@ cmd_ask() {
   base_abort=$(count_event "$roll" turn_aborted)
   before=$(( $(buffer | wc -l) + 1 ))
 
-  submit "Read the file $pf and do exactly what it says."
+  submit_verified "Read the file $pf and do exactly what it says." "$roll" "$base_done" || return 5
 
   # Block here. Every check is a file read and a terminal query - no model call, no tokens.
   local waited=0
