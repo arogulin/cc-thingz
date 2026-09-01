@@ -4,6 +4,18 @@ This repo ships independent Claude Code plugins. Version headings use values fro
 
 Entries are sorted by plugin version date, newest first.
 
+## thinking-tools v1.3.0 - 2026-08-31
+
+### New Features
+
+- `ask-codex` now runs codex as a persistent session in the split pane when the session is inside agterm, instead of spawning a fresh `codex exec` per question. A review cycle of 7-9 rounds keeps one codex conversation, so it remembers the change and the earlier rounds rather than re-reading everything each time, and the user can scroll it or take it over by hand
+- New `scripts/codex-pane.sh` (`ensure` / `ask` / `status`) drives that pane: it opens the split on `$AGTERM_SESSION_ID`, starts codex read-only at the pane's shell prompt so quitting codex leaves a live shell behind, answers the directory-trust prompt, waits for the TUI to be `Ready` before typing, and polls for a per-round sentinel before returning the answer
+- Prompts are passed by file path rather than typed into the pane — a newline in an injected line submits it, so a multi-line brief would otherwise become a stream of premature Enters
+
+### Improvements
+
+- `codex exec` remains the documented fallback outside agterm, with the review output format split per transport: markdown for the pane (a TUI wraps long lines and mangles JSON), JSON for exec
+
 ## workflow v1.3.0 - 2026-08-23
 
 ### New Features

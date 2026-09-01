@@ -1,12 +1,20 @@
 ---
 name: ask-codex
-description: Consult OpenAI Codex for investigation, debugging, or code review. Use when user explicitly asks to "ask codex", "check with codex", "codex review", or as a last resort when stuck after 4+ failed attempts at debugging, investigation, or bug fix and completely out of ideas. Codex is slow (2-5 min), so only escalate when truly stuck. Codex runs in read-only mode with full project access — it analyzes, we implement.
+description: Consult OpenAI Codex for investigation, debugging, or code review. Inside agterm it runs as a persistent session in the split pane, so it keeps context across many review rounds. Use when user explicitly asks to "ask codex", "check with codex", "codex review", or as a last resort when stuck after 4+ failed attempts at debugging, investigation, or bug fix and completely out of ideas. Codex is slow (2-5 min), so only escalate when truly stuck. Codex runs in read-only mode with full project access — it analyzes, we implement.
 allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Ask Codex
 
-Consult OpenAI Codex (GPT-5.6) as a second opinion for investigation, debugging, or review tasks.
+Consult OpenAI Codex (GPT-5.5) as a second opinion for investigation, debugging, or review tasks.
+
+Two transports, same prompting discipline:
+
+- **Pane mode (preferred, requires agterm)** — codex runs as a live TUI in the split pane of the current
+  session and stays there between rounds. Review cycles are routinely 7-9 rounds; a fresh process per
+  round throws away everything codex already learned about the change and re-pays the reading cost each
+  time. The user can also read, scroll, or take the conversation over by hand.
+- **Exec mode (fallback)** — one `codex exec` per question, for when there is no agterm session.
 
 ## Activation Triggers
 
@@ -26,6 +34,8 @@ Consult OpenAI Codex (GPT-5.6) as a second opinion for investigation, debugging,
 
 Run `which codex` to verify the CLI is installed. If not found, inform the user and stop.
 
+Then pick the transport: `echo $AGTERM_ENABLED` — `1` means pane mode, empty means exec mode.
+
 ### Step 2: Build Context
 
 Gather context from the current conversation:
@@ -35,19 +45,27 @@ Gather context from the current conversation:
 3. **What we tried** — approaches attempted and why they failed (if applicable)
 4. **Specific question** — what exactly codex should analyze or answer
 
-Codex does NOT auto-load Claude Code's memory files — it only reads `AGENTS.md`. To give Codex the same project context Claude follows, prepend the memory-load preamble described in Step 3.
+In pane mode, do this only for the first round. Later rounds inherit everything — state just what is
+new: "Round 3: I applied your finding 2 as follows … re-check that path and tell me whether it holds."
 
 ### Step 3: Construct Prompt
 
-Build a focused prompt. Do NOT dump entire files — codex has full project access and can read them itself. Provide file paths and line references so codex knows where to look.
+Build a focused prompt. Do NOT dump entire files — codex has full project access and can read them
+itself. Provide file paths and line references so codex knows where to look.
 
-**Prepend a memory-load preamble.** Codex auto-loads only `AGENTS.md`; it does NOT read Claude Code's memory files (`CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`, `~/.claude/CLAUDE.md`), so the project conventions Claude follows are invisible to Codex unless you tell it to read them. Prepend this line to the prompt:
+**Prepend a memory-load preamble** (first round only). Codex auto-loads only `AGENTS.md`; it does NOT
+read Claude Code's memory files (`CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`, `~/.claude/CLAUDE.md`),
+so the project conventions Claude follows are invisible to Codex unless you tell it to read them.
+Prepend this line to the prompt:
 
 ```
 First read these project guidance files if present: <ABS_HOME>/.claude/CLAUDE.md, CLAUDE.md, CLAUDE.local.md, .claude/rules/
 ```
 
-- Resolve `<ABS_HOME>` to the **absolute** home path (run `echo $HOME`, e.g. `/home/<user>`) and write the literal path — do NOT leave the string `$HOME` in the prompt. Whether `$HOME` expands depends on how the prompt is passed to Codex, and Codex may open the file with a non-shell tool that never expands it, so only a literal absolute path is reliable.
+- Resolve `<ABS_HOME>` to the **absolute** home path (run `echo $HOME`, e.g. `/home/<user>`) and write the
+  literal path — do NOT leave the string `$HOME` in the prompt. Whether `$HOME` expands depends on how the
+  prompt is passed to Codex, and Codex may open the file with a non-shell tool that never expands it, so
+  only a literal absolute path is reliable.
 - No `@` prefix — `@file` is inert in `codex exec` (literal text, not an import).
 - The project-relative paths resolve against Codex's working directory; Codex skips any that don't exist.
 
@@ -80,7 +98,7 @@ Keep response focused and actionable.
 
 **Template for code review (adversarial):**
 
-When asked for a code review, use this adversarial prompt that requires structured JSON output:
+When asked for a code review, use this adversarial prompt:
 
 ```
 <role>
@@ -130,7 +148,28 @@ If a conclusion depends on an inference, state that explicitly and keep the
 confidence score honest.
 </grounding_rules>
 
-<structured_output>
+<output_format>
+[PANE MODE: use this block]
+Plain markdown, no JSON — this is read back off a terminal pane, so keep lines short
+and the structure flat.
+
+VERDICT: approve | needs-attention
+SUMMARY: one line
+
+Then one block per finding:
+
+### [severity] title (confidence 0.0-1.0)
+file: path/to/file.go:42-55
+what: what goes wrong
+why: why this path is vulnerable
+impact: consequence
+fix: concrete change
+
+severity is critical | high | medium | low.
+Use needs-attention if any material risk is worth blocking on; approve only if you
+cannot support a substantive finding.
+
+[EXEC MODE: use this block instead]
 Return ONLY valid JSON. Example with concrete values:
 {
   "verdict": "needs-attention",
@@ -154,13 +193,51 @@ Allowed values:
 - verdict: "approve" or "needs-attention"
 - severity: "critical", "high", "medium", or "low"
 - confidence: 0.0 to 1.0
-
-Use "needs-attention" if there is any material risk worth blocking on.
-Use "approve" only if you cannot support any substantive finding.
-</structured_output>
+</output_format>
 ```
 
-### Step 4: Execute Codex
+Keep only the block matching the transport you are using — a TUI wraps long lines, which mangles JSON.
+
+### Step 4a: Execute — pane mode
+
+Ensure the pane, then send rounds:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/skills/ask-codex/scripts/codex-pane.sh" ensure "$PWD"
+```
+
+Prints `reused` if codex was already running in the split pane, `started` if it just launched one.
+**If it prints `reused`, do not re-brief codex from scratch** — it already has the project context and
+the earlier rounds. Ask the follow-up directly.
+
+The script:
+- opens a vertical split on `$AGTERM_SESSION_ID` if there is none (never on `active` — that is the
+  session the user has selected, not yours);
+- launches `codex --no-alt-screen -m gpt-5.6-sol -s read-only -a never -c model_reasoning_effort="high" -C <repo>`
+  by typing it at the split pane's shell prompt;
+- answers codex's "Do you trust the contents of this directory?" prompt with `1` when it appears
+  (unanswered, it swallows the next round's prompt and quits);
+- blocks until the status line reads `· Ready ·`, so no round is typed into a TUI that is not listening.
+
+Codex is a child of that pane's shell, so `/quit` drops the user back at a prompt in the right directory
+and the pane survives — they can restart codex there by hand.
+
+Write the round's prompt to a file and send it:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/skills/ask-codex/scripts/codex-pane.sh" ask /path/to/codex-round-3.md
+```
+
+Never type a multi-line prompt into the pane yourself: every newline submits, so a 30-line brief becomes
+30 premature Enters. The script types one line (`Read the file <path> and do exactly what it says. End
+your reply with the line CODEX-DONE-<stamp>`), sends Enter separately, then polls every 10s until both
+the sentinel is on screen and the status line is back to `Ready`, and prints the round's output.
+
+Run it with `run_in_background: true` and check with BashOutput — a round takes 2-5 minutes and long
+silences during reasoning are normal. Default timeout is 900s; raise with `CODEX_PANE_TIMEOUT=1800`. On
+timeout the script dumps the last 80 pane lines to stderr.
+
+### Step 4b: Execute — exec mode (no agterm)
 
 Run codex in background (it takes 2-5 minutes for complex analysis):
 
@@ -173,7 +250,10 @@ codex exec -m gpt-5.6-sol \
 ```
 
 **Execution rules:**
-- Always end the invocation with `< /dev/null` (as shown). `codex exec` reads stdin to append a `<stdin>` block even when the prompt is a positional arg, so an inherited open pipe (common under a background launch) never closes and codex blocks forever on "Reading additional input from stdin…"; `/dev/null` gives immediate EOF.
+- Always end the invocation with `< /dev/null` (as shown). `codex exec` reads stdin to append a `<stdin>`
+  block even when the prompt is a positional arg, so an inherited open pipe (common under a background
+  launch) never closes and codex blocks forever on "Reading additional input from stdin…"; `/dev/null`
+  gives immediate EOF.
 - Always use `run_in_background: true` in Bash tool
 - Monitor with BashOutput every 15-20 seconds
 - Be patient during reasoning phase (1-3 minutes of silence is normal)
@@ -186,8 +266,9 @@ codex exec -m gpt-5.6-sol \
 
 ### Step 5: Present Results
 
-1. **Extract codex's analysis** — skip session info, token counts, prompt echo
-2. **Parse structured output** — for reviews, codex returns JSON; parse and present as structured findings
+1. **Extract codex's analysis** — skip session info, token counts, prompt echo, and in pane mode the TUI
+   chrome (spinner rows, status line, the sentinel)
+2. **Parse structured output** — markdown findings in pane mode, JSON in exec mode
 3. **Add your assessment** — agree, disagree, or note caveats
 4. **STOP and ask** — do NOT apply any fixes or changes without explicit user approval
 
@@ -205,9 +286,9 @@ codex exec -m gpt-5.6-sol \
 **Proposed action:** [What codex suggests — awaiting approval]
 ```
 
-**For review responses** (structured JSON):
+**For review responses:**
 
-Parse the JSON output and present findings sorted by severity, filtered by confidence:
+Present findings sorted by severity, filtered by confidence:
 
 ```
 **Codex Review: [verdict]**
@@ -242,7 +323,11 @@ Parse the JSON output and present findings sorted by severity, filtered by confi
 - **Don't duplicate files** — codex has full project access. Provide paths, not content.
 - **Focused prompts** — specific questions get better answers than broad "review everything".
 - **Background execution** — always run in background to avoid timeout issues.
-- **One question at a time** — if multiple concerns, run separate codex queries.
+- **One question at a time** — if multiple concerns, run separate rounds. In pane mode this costs
+  nothing, since the session keeps the context.
+- **Reuse beats restart** — a `reused` pane already knows the change. Re-briefing wastes the point.
+- **Always `--target "$AGTERM_SESSION_ID"`** for any manual agtermctl call — `active` is whatever
+  session the user has selected.
 - **Critical thinking** — codex can be wrong. Evaluate its suggestions before implementing.
 
 ## When NOT to Use
@@ -255,6 +340,20 @@ Parse the JSON output and present findings sorted by severity, filtered by confi
 
 - **Codex not found**: `which codex` — install via `npm install -g @openai/codex`
 - **Authentication**: `codex login` if getting auth errors
-- **Timeout**: increase `stream_idle_timeout_ms` for complex analyses
+- **Timeout (exec mode)**: increase `stream_idle_timeout_ms` for complex analyses
 - **Off-target response**: refine prompt with more specific file:line references
-- **Hangs on "Reading additional input from stdin…"**: the invocation is missing the `< /dev/null` stdin redirect — add it (see Step 4).
+- **Hangs on "Reading additional input from stdin…"**: the exec invocation is missing the `< /dev/null`
+  stdin redirect — add it (see Step 4b).
+- **Script says the split never came up**: check `agtermctl tree --json`; if the split pane exists but
+  sits at a shell prompt, codex failed to start. Read it with
+  `agtermctl session text --pane right --target "$AGTERM_SESSION_ID" --all | tail -40`.
+- **Sentinel never appears**: codex may be waiting on a prompt. `ensure` clears the directory-trust
+  prompt and `-a never` suppresses approvals, so this should be rare; if it happens, look at the pane
+  and clear it by hand.
+- **`ask` fails with "no codex in the split pane"**: the user quit codex. That is supported — the pane
+  drops to a shell. Run `ensure` again; it starts a fresh session, so context from earlier rounds is
+  gone. Say so before re-briefing.
+- **Output looks wrapped or garbled**: the pane is narrow. Widen the split with
+  `agtermctl session resize --target "$AGTERM_SESSION_ID" …` before the next round.
+- **User wants their own conversation with codex**: they already have it — the pane is a normal
+  interactive codex. Tell them to click into it and type.
