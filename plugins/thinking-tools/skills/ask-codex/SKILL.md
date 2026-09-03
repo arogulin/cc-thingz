@@ -298,7 +298,7 @@ Run codex in background (it takes 2-5 minutes for complex analysis):
 ```bash
 codex exec -m gpt-5.6-sol \
   --sandbox read-only \
-  -c model_reasoning_effort="high" \
+  -c model_reasoning_effort="medium" \
   -c stream_idle_timeout_ms=600000 \
   "prompt here" < /dev/null
 ```
@@ -316,7 +316,7 @@ codex exec -m gpt-5.6-sol \
 **Flags:**
 - `--sandbox read-only` — codex can read all project files but cannot modify anything
 - `-m gpt-5.6-sol` — latest model (adjust as newer versions become available)
-- `model_reasoning_effort="high"` — high reasoning tier
+- `model_reasoning_effort="medium"` — medium reasoning tier
 
 ### Step 5: Present Results
 
