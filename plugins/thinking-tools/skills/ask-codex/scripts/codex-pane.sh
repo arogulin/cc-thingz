@@ -19,7 +19,7 @@
 #             5 the prompt was typed but codex never started the turn
 #
 # Environment:
-#   CODEX_PANE_MODEL    model passed to codex (default gpt-5.6-sol)
+#   CODEX_PANE_MODEL    model passed to codex (default gpt-6-astra)
 #   CODEX_PANE_EFFORT   reasoning effort (default medium)
 #   CODEX_PANE_TIMEOUT  seconds to wait for one round (default 1800)
 #
@@ -28,7 +28,7 @@ set -uo pipefail
 : "${AGTERM_SESSION_ID:?not running inside an agterm session}"
 TARGET="$AGTERM_SESSION_ID"
 PANE=right
-MODEL="${CODEX_PANE_MODEL:-gpt-5.6-sol}"
+MODEL="${CODEX_PANE_MODEL:-gpt-6-astra}"
 EFFORT="${CODEX_PANE_EFFORT:-medium}"
 TIMEOUT="${CODEX_PANE_TIMEOUT:-1800}"
 SESSIONS="$HOME/.codex/sessions"

@@ -239,7 +239,7 @@ the earlier rounds. Ask the follow-up directly.
 The script:
 - opens a vertical split on `$AGTERM_SESSION_ID` if there is none (never on `active` — that is the
   session the user has selected, not yours), and leaves the divider where the user has it;
-- launches `codex --no-alt-screen -m gpt-5.6-sol -c model_reasoning_effort="medium" --approve-for-me -c sandbox_workspace_write.network_access=true -C <repo>`
+- launches `codex --no-alt-screen -m gpt-6-astra -c model_reasoning_effort="medium" --approve-for-me -c sandbox_workspace_write.network_access=true -C <repo>`
   by typing it at the split pane's shell prompt;
 - answers codex's "Do you trust the contents of this directory?" prompt with `1` when it appears
   (unanswered, it swallows the next round's prompt and quits);
@@ -296,7 +296,7 @@ row), which no config setting removes.
 Run codex in background (it takes 2-5 minutes for complex analysis):
 
 ```bash
-codex exec -m gpt-5.6-sol \
+codex exec -m gpt-6-astra \
   --sandbox read-only \
   -c model_reasoning_effort="medium" \
   -c stream_idle_timeout_ms=600000 \
@@ -315,7 +315,7 @@ codex exec -m gpt-5.6-sol \
 
 **Flags:**
 - `--sandbox read-only` — codex can read all project files but cannot modify anything
-- `-m gpt-5.6-sol` — latest model (adjust as newer versions become available)
+- `-m gpt-6-astra` — latest model (adjust as newer versions become available)
 - `model_reasoning_effort="medium"` — medium reasoning tier
 
 ### Step 5: Present Results
