@@ -127,6 +127,26 @@ print(best[1] or "")
 PY
 }
 
+# Diagnostic for a timeout: what cwd does the newest live codex-tui journal actually claim? If it
+# differs from the recorded repo, find_rollout was filtering out the journal that held the answer.
+newest_tui_cwd() {
+  python3 - "$SESSIONS" <<'PY'
+import json,os,sys,glob
+best=(0,None,None)
+for p in glob.glob(os.path.join(sys.argv[1],"*","*","*","rollout-*.jsonl")):
+    try:
+        st=os.stat(p)
+        if st.st_mtime < best[0]: continue
+        with open(p) as fh: meta=json.loads(fh.readline())
+        if meta.get("type")!="session_meta": continue
+        pay=meta.get("payload",{})
+        if pay.get("originator")!="codex-tui": continue
+        best=(st.st_mtime,pay.get("cwd",""),p)
+    except Exception: continue
+if best[2]: print("%s\t%s" % (best[1], best[2]))
+PY
+}
+
 # grep -c prints its count AND exits 1 when the count is zero, so `|| echo 0` would print a second
 # line and every arithmetic test downstream would fail on "0\n0".
 count_event() {
@@ -164,7 +184,15 @@ cmd_ensure() {
   repo=$(cd "$repo" && pwd)
   mkdir -p "$STATE_DIR"
   if has_codex; then
-    echo "$repo" > "$(state_file repo)"
+    # The pane's codex was started with -C <its own repo> and keeps that cwd for its whole life.
+    # Overwriting the recorded repo with the caller's cwd here would make `ask` look for a journal
+    # whose session_meta cwd can never match, and it would then wait out the entire timeout.
+    local recorded; recorded=$(cat "$(state_file repo)" 2>/dev/null)
+    if [ -z "$recorded" ]; then
+      echo "$repo" > "$(state_file repo)"
+    elif [ "$recorded" != "$repo" ]; then
+      echo "note: reusing the codex already running in $recorded; this call asked for $repo. Answers are read from that pane's journal. Quit codex in the split pane and re-run ensure to move it." >&2
+    fi
     echo reused; return 0
   fi
   echo "$repo" > "$(state_file repo)"
@@ -232,7 +260,22 @@ cmd_ask() {
       return 4
     fi
   done
-  echo "TIMEOUT after ${TIMEOUT}s. Last 40 lines of the codex pane:" >&2
+  echo "TIMEOUT after ${TIMEOUT}s." >&2
+  echo "  recorded repo: $repo (state file: $(state_file repo))" >&2
+  local newest ncwd njournal
+  newest=$(newest_tui_cwd)
+  if [ -n "$newest" ]; then
+    ncwd=${newest%%$'\t'*}
+    njournal=${newest#*$'\t'}
+    echo "  newest codex-tui journal: $njournal (cwd: $ncwd)" >&2
+    if [ "$(cd "$ncwd" 2>/dev/null && pwd -P)" != "$(cd "$repo" 2>/dev/null && pwd -P)" ]; then
+      echo "  MISMATCH: no journal matches the recorded repo, so no answer could ever be seen. Re-run ensure from $ncwd, or quit codex in the split pane and start it in $repo." >&2
+    fi
+  else
+    echo "  no codex-tui journal found at all under $SESSIONS" >&2
+  fi
+  [ -n "$roll" ] && echo "  journal being watched: $roll" >&2
+  echo "Last 40 lines of the codex pane:" >&2
   buffer | tail -40 >&2
   return 2
 }

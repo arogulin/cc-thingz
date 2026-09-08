@@ -6,6 +6,19 @@ Entries are sorted by plugin version date, newest first.
 
 Entries marked (fork) are changes this fork carries that upstream does not have. They have no version of their own and sit on top of the upstream release below them.
 
+## thinking-tools (fork) - 2026-09-08, timeout diagnostics
+
+### Bug Fixes
+
+- `ensure` no longer overwrites the recorded repo when a codex pane is already running. The pane keeps the cwd it was started with for its whole life, so repointing the state file at a later caller's cwd made `ask` watch for a journal whose `session_meta` cwd could never match, and it waited out the full timeout. It now keeps the original repo and prints which one it is reusing
+- A timeout reports the recorded repo, the newest live `codex-tui` journal and its cwd, and the journal being watched. When those cwds disagree it says so outright, which is the case where no answer could ever have been seen
+
+## planning (fork) - 2026-09-08, codex model defaults
+
+### Changes
+
+- `run-codex.sh` defaults to `gpt-6-astra` at `medium` effort, matching `ask-codex`. The defaults previously named `gpt-5.6-sol` at `high` and were reachable only by unsetting `CODEX_MODEL` and `CODEX_EFFORT`, so a machine without those env vars silently ran a different model than the one intended
+
 ## planning v3.10.2 - 2026-09-07
 
 ### Bug Fixes
