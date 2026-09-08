@@ -12,7 +12,7 @@ The planning plugin has three components: make (plan creation), exec (autonomous
 1. **Step 0** — parses intent (feature, bug fix, refactor, migration) and explores codebase for context
 2. **Step 1** — asks focused questions one at a time: goal, scope, constraints, testing approach, title
 3. **Step 1.5** — proposes 2-3 implementation approaches with trade-offs (skipped if obvious)
-4. **Step 2** — creates plan file at `documentation/plans/yyyymmdd-<task-name>.md`
+4. **Step 2** — creates plan file at `docs/plans/yyyymmdd-<task-name>.md`
 5. **Step 3** — offers next steps: interactive review, auto review, implement, or done
 
 ### Examples
@@ -36,7 +36,7 @@ The planning plugin has three components: make (plan creation), exec (autonomous
 - "exec", "execute plan", "run plan"
 
 ### Workflow
-1. Resolves plan file (from argument or picks from `documentation/plans/`)
+1. Resolves plan file (from argument or picks from `docs/plans/`)
 2. Asks about worktree isolation (worktree vs current directory)
 3. Creates a feature branch
 4. Executes tasks sequentially — one subagent per task, commits after each
@@ -54,7 +54,7 @@ Set via `userConfig` in plugin.json (prompted at install):
 | `review_iterations` | `5` | max fix-and-recheck cycles |
 | `external_review_iterations` | `10` | max external review iterations |
 | `finalize_enabled` | `true` | run rebase + squash phase |
-| `plans_dir` | `documentation/plans` | directory for plan files |
+| `plans_dir` | `docs/plans` | directory for plan files |
 
 ### Customization
 Prompts and agent definitions use a three-layer override chain:

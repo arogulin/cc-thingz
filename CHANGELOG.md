@@ -4,6 +4,19 @@ This repo ships independent Claude Code plugins. Version headings use values fro
 
 Entries are sorted by plugin version date, newest first.
 
+## planning v3.10.2 - 2026-09-07
+
+### Bug Fixes
+
+- Review phases report uncommitted paths left after a fixer returns, so users can see which edits are missing from the next review's committed branch diff.
+
+## planning v3.10.1 - 2026-09-06
+
+### Bug Fixes
+
+- External review keeps the complete branch diff on every iteration, so committed fixer changes remain visible to subsequent reviews.
+- Completion collects timestamped decision and deviation entries from the progress file.
+
 ## thinking-tools v1.4.1 - 2026-09-01
 
 ### Bug Fixes
